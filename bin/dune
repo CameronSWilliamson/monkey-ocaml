@@ -1,4 +1,4 @@
 (executable
  (public_name monkey)
  (name main)
- (libraries monkey))
+ (libraries monkey base stdio))
