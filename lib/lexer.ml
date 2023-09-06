@@ -107,9 +107,7 @@ let next_token lexer =
        | ch when Char.is_digit ch -> read_digit lexer
        | ch -> Fmt.failwith "unknown char: %c" ch)
   in
-  match token with
-  | Eof -> lexer, None
-  | other -> lexer, Some other
+  lexer, token
 ;;
 
 module Test = struct
@@ -118,8 +116,8 @@ module Test = struct
     let tokens = Vect.create 10 Token.Illegal in
     let rec loop index lexer =
       match next_token lexer with
-      | _, None -> Vect.push tokens Token.Eof
-      | lexer, Some token ->
+      | _, Eof -> Vect.push tokens Token.Eof
+      | lexer, token ->
         Vect.push tokens token;
         loop (index + 1) lexer
     in

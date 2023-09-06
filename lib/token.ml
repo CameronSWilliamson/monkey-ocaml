@@ -44,3 +44,23 @@ let lookup_ident str =
   | "return" -> Return
   | _ -> Ident str
 ;;
+
+let string_of_token = function
+  | Assign -> "="
+  | Plus -> "+"
+  | Minus -> "-"
+  | Bang -> "!"
+  | Asterisk -> "*"
+  | Slash -> "/"
+  | Lt -> "<"
+  | Gt -> ">"
+  | Equal -> "=="
+  | NotEqual -> "!="
+  | Comma -> ","
+  | Semicolon -> ";"
+  | Lparen -> "("
+  | Rparen -> ")"
+  | Lbrace -> "{"
+  | Rbrace -> "}"
+  | other -> String.lowercase_ascii @@ show_token other
+;;
