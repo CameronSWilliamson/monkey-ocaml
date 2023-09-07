@@ -4,16 +4,31 @@ type t =
   { input : string
   ; position : int
   ; ch : char option
+  ; debug : bool
   }
 [@@deriving show]
 
 let init input =
   if String.is_empty input
-  then { input; position = 0; ch = None }
-  else { input; position = 0; ch = Some (String.get input 0) }
+  then { input; position = 0; ch = None; debug = false }
+  else { input; position = 0; ch = Some (String.get input 0); debug = false }
+;;
+
+let _init_debug input = { (init input) with debug = true }
+
+let debug lexer fname =
+  if lexer.debug
+  then (
+    let current_item =
+      match lexer.ch with
+      | Some ch -> String.of_char ch
+      | None -> "None"
+    in
+    Fmt.pr "lexer: %s %s\n" current_item fname)
 ;;
 
 let advance lexer =
+  let _ = debug lexer Stdlib.__FUNCTION__ in
   if lexer.position >= String.length lexer.input - 1
   then { lexer with ch = None }
   else (
@@ -22,12 +37,14 @@ let advance lexer =
 ;;
 
 let peek_char lexer =
+  let _ = debug lexer Stdlib.__FUNCTION__ in
   if lexer.position >= String.length lexer.input - 1
   then None
   else Some (String.get lexer.input (lexer.position + 1))
 ;;
 
 let if_peek lexer ch ~not_matched ~when_matched =
+  let _ = debug lexer Stdlib.__FUNCTION__ in
   let peeked = peek_char lexer in
   let lexer, result =
     match peeked with
@@ -38,50 +55,67 @@ let if_peek lexer ch ~not_matched ~when_matched =
 ;;
 
 let seek lexer condition =
-  let rec loop lexer = if condition lexer.ch then loop @@ advance lexer else lexer in
+  let _ = debug lexer Stdlib.__FUNCTION__ in
+  let rec loop lexer =
+    let _ = debug lexer Stdlib.__FUNCTION__ in
+    match lexer.ch with
+    | Some ch when condition ch -> loop @@ advance lexer
+    | Some _ -> lexer
+    | None -> { lexer with position = lexer.position + 1 }
+  in
   let lexer = loop lexer in
   lexer, lexer.position
 ;;
 
 let read_while lexer f =
+  let _ = debug lexer Stdlib.__FUNCTION__ in
   let start_pos = lexer.position in
   let lexer, pos_end = seek lexer f in
+  let _ = debug lexer @@ Fmt.str "start_pos: %d, end_pos: %d" start_pos pos_end in
   lexer, String.sub lexer.input ~pos:start_pos ~len:(pos_end - start_pos)
 ;;
 
 let skip_whitespace lexer =
-  let lexer, _ =
-    read_while lexer (fun ch ->
-      match ch with
-      | Some ch -> Char.(ch = ' ' || ch = '\t' || ch = '\n' || ch = '\r')
-      | None -> false)
-  in
-  lexer
+  let _ = debug lexer Stdlib.__FUNCTION__ in
+  match lexer.ch with
+  | Some _ ->
+    let lexer, _ =
+      read_while lexer (fun ch -> Char.(ch = ' ' || ch = '\t' || ch = '\n' || ch = '\r'))
+    in
+    lexer
+  | None -> lexer
 ;;
 
 let is_letter ch = Char.(ch = '_' || is_alpha ch)
 
 let read_ident lexer =
+  let _ = debug lexer Stdlib.__FUNCTION__ in
   let lexer, ident =
     read_while lexer (fun ch ->
-      match ch with
-      | Some ch -> is_letter ch
-      | None -> false)
+      let _ = debug lexer (Fmt.str "ident %c**" ch) in
+      let result = is_letter ch in
+      let _ = debug lexer (Fmt.str "%c %b" ch result) in
+      result)
   in
   lexer, Token.lookup_ident ident
 ;;
 
 let read_digit lexer =
+  let _ = debug lexer Stdlib.__FUNCTION__ in
   let lexer, number =
     read_while lexer (fun ch ->
-      match ch with
-      | Some ch -> Char.is_digit ch
-      | None -> false)
+      let _ = debug lexer (Fmt.str "ident %c**" ch) in
+      let result = Char.is_digit ch in
+      let _ = debug lexer (Fmt.str "%c %b" ch result) in
+      result)
   in
+  let _ = debug lexer (Fmt.str "aoehutsnaoeuhtsn") in
+  let _ = debug lexer (Fmt.str "end number = %s" number) in
   lexer, Token.Int number
 ;;
 
 let next_token lexer =
+  let _ = debug lexer Stdlib.__FUNCTION__ in
   let open Token in
   let lexer = skip_whitespace lexer in
   let lexer, token =
@@ -243,5 +277,18 @@ module Test = struct
       (Token.Int "10")
       Token.Semicolon
       Token.Eof |}]
+  ;;
+
+  let%expect_test "missing semicolon" =
+    let tokens = input_to_tokens "let x = 5" in
+    print_tokens tokens;
+    [%expect
+      {|
+      Token.Let
+      (Token.Ident "x")
+      Token.Assign
+      (Token.Int "5")
+      Token.Eof
+      |}]
   ;;
 end
