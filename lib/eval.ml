@@ -1,10 +1,14 @@
 let ( let* ) res f = Base.Result.bind res ~f
 
 let rec eval node =
-  match node with
+  let res = match node with
   | Ast.Program program -> eval_program program
   | Ast.Expression expr -> eval_expr expr
   | Ast.Statement stmt -> eval_statement stmt
+  in
+  match res with
+  | Ok res -> Ok res
+  | Error msg -> Error (Fmt.str "ERROR: %s" msg)
 
 and eval_program stmts =
   let rec eval_program' stmts result =
@@ -72,13 +76,18 @@ and eval_bang_op_expr = function
 
 and eval_minus_prefix_op_expr = function
   | Object.Integer integer -> Ok (Object.Integer (-1 * integer))
+  | Object.Boolean _ -> Error (Fmt.str "unknown operator: -BOOLEAN" )
   | other -> Error (Fmt.str "unknown operator: -%s" @@ Object.inspect other)
 
 and eval_infix_expression op right left =
   match right, left with
   | Object.Integer l, Object.Integer r -> eval_int_infix_expr op l r
   | Object.Boolean l, Object.Boolean r -> eval_bool_infix_expr op l r
-  | _ -> Ok Object.monkey_null
+  | Object.Boolean _, Object.Integer _ ->
+    Error (Fmt.str "type mismatch: BOOLEAN %s INTEGER" op)
+  | Object.Integer _, Object.Boolean _ ->
+    Error (Fmt.str "type mismatch: INTEGER %s BOOLEAN" op)
+  | _ -> Error (Fmt.str "no idea what happened")
 
 and eval_int_infix_expr op l r =
   let result =
@@ -102,11 +111,11 @@ and eval_bool_infix_expr op l r =
   in
   let result =
     match op with
-    | "==" -> det_result (l = r)
-    | "!=" -> det_result (l <> r)
-    | _ -> Object.monkey_null
+    | "==" -> Ok (det_result (l = r))
+    | "!=" -> Ok (det_result (l <> r))
+    | _ -> Error (Fmt.str "unknow operator: BOOLEAN %s BOOLEAN" op)
   in
-  Ok result
+  result
 
 and is_truthy = function
   | Object.Null -> false
@@ -133,7 +142,10 @@ module Test = struct
 
   let expect_err str =
     match evaluate str with
-    | Ok obj -> failwith @@ Object.inspect obj
+    | Ok obj ->
+      failwith
+        (Fmt.str "\"%s\" did not throw an error. evaluated to \"%s\"" str
+         @@ Object.inspect obj)
     | Error err -> Fmt.pr "%s\n" err
   ;;
 

@@ -5,22 +5,20 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github cameronswilliamson/monkey-ocaml))
 
-(authors "Author Name")
+(authors "Cameron S. Williamson")
 
-(maintainers "Maintainer Name")
+(maintainers "Cameron S. Williamson")
 
-(license LICENSE)
+(license MIT)
 
 (documentation https://url/to/documentation)
 
 (package
  (name monkey)
- (synopsis "A short synopsis")
- (description "A longer description")
- (depends ocaml dune)
- (tags
-  (topics "to describe" your project)))
+ (synopsis "Monkey programming language")
+ (description "A C-like language named Monkey PL")
+ (depends ocaml dune base fmt ppx_inline_test ppx_expect ppx_deriving stdio core))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
