@@ -1,6 +1,6 @@
 open Base
 
-type parser =
+type t =
   { lexer : Lexer.t
   ; current : Token.token
   ; next : Token.token
@@ -17,35 +17,21 @@ type precedence =
   | `Prefix
   | `Call
   ]
-[@@deriving show, eq, ord]
+[@@deriving ord]
 
 let prec_gte a b = compare_precedence a b >= 0
-let ( >>= ) res f = Base.Result.bind res ~f
 let ( let* ) res f = Base.Result.bind res ~f
-
-let bind res f =
-  match res with
-  | Ok r -> f r
-  | o -> o
-;;
 
 let advance parser =
   let lexer, next = Lexer.next_token parser.lexer in
   { parser with lexer; next; current = parser.next }
 ;;
 
-let rec eat_until_semicolon parser =
-  match parser.current with
-  | Token.Semicolon -> parser
-  | _ -> eat_until_semicolon @@ advance parser
-;;
-
-let error_msg expected actual line =
+let error_msg expected actual _line =
   Fmt.str
-    "expected token to be %s, got %s instead on line %d"
+    "Expected token to be \"%s\", got \"%s\" instead."
     (Token.show_token expected)
     (Token.show_token actual)
-    line
 ;;
 
 let eat parser token location =
@@ -114,7 +100,7 @@ and parse_let parser =
   let parser = advance parser in
   let* parser = eat parser Token.Assign Stdlib.__LINE__ in
   let* parser, value = parse_expression parser `Lowest in
-  let parser = eat_until_semicolon parser in
+  let* parser = eat_next parser Token.Semicolon Stdlib.__LINE__ in
   Ok (parser, Ast.Let { name = ident; value })
 
 and parse_return parser =
@@ -312,10 +298,6 @@ and parse_call_args parser =
     let* parser = eat_next parser Token.Rparen Stdlib.__LINE__ in
     Ok (parser, arguments)
 
-and cur_prec parser =
-  let _ = debug parser Stdlib.__FUNCTION__ in
-  parser.current |> token_to_precedence
-
 and next_prec parser =
   let _ = debug parser Stdlib.__FUNCTION__ in
   parser.next |> token_to_precedence
@@ -371,7 +353,7 @@ module Test = struct
     let foobar 828282;
     |};
     [%expect
-      {| expected token to be Token.Assign, got (Token.Int "828282") instead on line 115|}]
+      {| Expected token to be "Token.Assign", got "(Token.Int "828282")" instead.|}]
   ;;
 
   let%expect_test "series of return stmts" =

@@ -77,7 +77,10 @@ let rec string_of_expression = function
          Fmt.str "%s%s%s" acc (if String.length acc > 0 then ", " else "")
          @@ string_of_identifier param))
       (string_of_block lit.body)
-  | CallExpr expr -> Fmt.str "%s (%s)" (string_of_expression expr.func)
+  | CallExpr expr ->
+    Fmt.str
+      "%s (%s)"
+      (string_of_expression expr.func)
       (List.fold expr.arguments ~init:"" ~f:(fun acc param ->
          Fmt.str "%s%s%s" acc (if String.length acc > 0 then ", " else "")
          @@ string_of_expression param))
@@ -105,6 +108,11 @@ and string_of_statment_list ?(s = "  ") ?(d = "\n") stmts =
 and string_of_program program =
   let stmts = string_of_statment_list program.statements in
   Fmt.str "Program: [@.%s]@." stmts
+
+and string_of_node = function
+  | Program program -> string_of_program program
+  | Expression expr -> string_of_expression expr
+  | Statement stmt -> string_of_statment stmt
 ;;
 
 let print_node = function

@@ -6,5 +6,5 @@ type t =
   }
 [@@deriving show]
 
-val init: string -> t
-val next_token: t -> t * Token.token
+val init : string -> t
+val next_token : t -> t * Token.token
